@@ -1,0 +1,241 @@
+! Device: DEMO-EDGE-RTR01
+! Backup Date: 2026-01-01T00:00:00.000000
+! This is a synthetic, fully fictional configuration created to demonstrate
+! router-config-parser. No real hostnames, IP addresses, credentials or
+! partner names appear anywhere in this file. All IPs are drawn from the
+! IANA/IETF documentation ranges (RFC 5737 / RFC 1918).
+!==============================================================================
+Building configuration...
+
+Current configuration : 9842 bytes
+!
+! Last configuration change at 09:00:00 GMT Thu Jan 1 2026 by demo-admin
+! NVRAM config last updated at 09:00:05 GMT Thu Jan 1 2026 by demo-admin
+!
+version 17.9
+service tcp-keepalives-in
+service tcp-keepalives-out
+service timestamps debug datetime msec show-timezone year
+service timestamps log datetime msec show-timezone
+service password-encryption
+!
+hostname DEMO-EDGE-RTR01
+!
+boot-start-marker
+boot system flash bootflash:/demo-universalk9.17.09.04a.SPA.bin
+boot-end-marker
+!
+vrf definition Mgmt-intf
+ !
+ address-family ipv4
+ exit-address-family
+ !
+ address-family ipv6
+ exit-address-family
+!
+vrf definition PARTNER-VPN-CONTOSO
+ rd 65000:100
+ !
+ address-family ipv4
+ exit-address-family
+!
+vrf definition PARTNER-VPN-FABRIKAM
+ rd 65000:200
+ !
+ address-family ipv4
+ exit-address-family
+!
+enable secret 9 $14$DEMO$REDACTED$FOR$PORTFOLIO$PURPOSES$ONLY$
+!
+username demo-admin privilege 15 secret 9 $14$DEMO$REDACTED$FOR$PORTFOLIO$PURPOSES$ONLY$
+!
+ip access-list extended ACL-CONTOSO-NAT
+ 10 permit ip 192.0.2.0 0.0.0.255 any
+!
+ip access-list extended ACL-FABRIKAM-NAT
+ 10 permit ip 192.0.2.0 0.0.0.255 any
+!
+ip access-list standard ACL-MGMT-ALLOWED
+ 10 permit 192.0.2.0 0.0.0.255
+!
+ip nat pool CONTOSO-NAT-POOL 198.51.100.10 198.51.100.10 netmask 255.255.255.252
+ip nat pool FABRIKAM-NAT-POOL 198.51.100.20 198.51.100.20 netmask 255.255.255.252
+!
+ip sla 100
+ icmp-echo 203.0.113.2 source-ip 203.0.113.1
+  frequency 5
+ip sla schedule 100 life forever start-time now
+ip sla 200
+ icmp-echo 203.0.113.6 source-ip 203.0.113.5
+  frequency 5
+ip sla schedule 200 life forever start-time now
+track 100 ip sla 100 reachability
+!
+track 200 ip sla 200 reachability
+!
+crypto ikev2 proposal CONTOSO-PROPOSAL
+ encryption aes-cbc-256
+ integrity sha256
+ group 14
+!
+crypto ikev2 proposal FABRIKAM-PROPOSAL
+ encryption aes-cbc-256
+ integrity sha256
+ group 14
+!
+crypto ikev2 policy 10
+ proposal CONTOSO-PROPOSAL
+!
+crypto ikev2 policy 20
+ proposal FABRIKAM-PROPOSAL
+!
+crypto ikev2 keyring CONTOSO-KEYRING
+ peer CONTOSO-PEER
+  address 198.51.100.2
+  pre-shared-key DEMO-PSK-CONTOSO-0001-CHANGE-ME
+ !
+!
+crypto ikev2 keyring FABRIKAM-KEYRING
+ peer FABRIKAM-PEER
+  address 198.51.100.6
+  pre-shared-key DEMO-PSK-FABRIKAM-0001-CHANGE-ME
+ !
+!
+crypto ikev2 profile CONTOSO-VTI-PROFILE
+ match identity remote address 198.51.100.2 255.255.255.255
+ authentication remote pre-share
+ authentication local pre-share
+ keyring local CONTOSO-KEYRING
+!
+crypto ikev2 profile FABRIKAM-VTI-PROFILE
+ match identity remote address 198.51.100.6 255.255.255.255
+ authentication remote pre-share
+ authentication local pre-share
+ keyring local FABRIKAM-KEYRING
+!
+crypto ipsec transform-set CONTOSO-TS esp-aes 256 esp-sha256-hmac
+ mode tunnel
+!
+crypto ipsec transform-set FABRIKAM-TS esp-aes 256 esp-sha256-hmac
+ mode tunnel
+!
+crypto ipsec profile CONTOSO-IPSEC-PROFILE
+ set transform-set CONTOSO-TS
+ set ikev2-profile CONTOSO-VTI-PROFILE
+!
+crypto ipsec profile FABRIKAM-IPSEC-PROFILE
+ set transform-set FABRIKAM-TS
+ set ikev2-profile FABRIKAM-VTI-PROFILE
+!
+interface Loopback0
+ ip address 203.0.113.1 255.255.255.255
+!
+interface GigabitEthernet0/0
+ description +++ WAN Uplink (documentation range) +++
+ ip address 203.0.113.1 255.255.255.252
+ duplex full
+ speed 1000
+!
+interface GigabitEthernet0/1
+ description +++ Trunk to LAN switch (sub-interfaces per VRF) +++
+ no ip address
+ duplex full
+ speed 1000
+!
+interface GigabitEthernet0/1.100
+ description +++ PARTNER-VPN-CONTOSO LAN +++
+ encapsulation dot1Q 100
+ vrf forwarding PARTNER-VPN-CONTOSO
+ ip address 192.0.2.1 255.255.255.0
+ ip nat inside
+!
+interface GigabitEthernet0/1.200
+ description +++ PARTNER-VPN-FABRIKAM LAN +++
+ encapsulation dot1Q 200
+ vrf forwarding PARTNER-VPN-FABRIKAM
+ ip address 192.0.2.1 255.255.255.0
+ ip nat inside
+!
+interface Tunnel100
+ description *** IPSec VTI to Contoso (demo) ***
+ vrf forwarding PARTNER-VPN-CONTOSO
+ ip unnumbered Loopback0
+ ip nat outside
+ ip tcp adjust-mss 1380
+ tunnel source GigabitEthernet0/0
+ tunnel mode ipsec ipv4
+ tunnel destination 198.51.100.2
+ tunnel protection ipsec profile CONTOSO-IPSEC-PROFILE
+!
+interface Tunnel200
+ description *** IPSec VTI to Fabrikam (demo) ***
+ vrf forwarding PARTNER-VPN-FABRIKAM
+ ip unnumbered Loopback0
+ ip nat outside
+ ip tcp adjust-mss 1380
+ tunnel source GigabitEthernet0/0
+ tunnel mode ipsec ipv4
+ tunnel destination 198.51.100.6
+ tunnel protection ipsec profile FABRIKAM-IPSEC-PROFILE
+!
+router bgp 65000
+ bgp log-neighbor-changes
+ !
+ address-family ipv4
+ exit-address-family
+ !
+ address-family ipv4 vrf PARTNER-VPN-CONTOSO
+  network 192.0.2.0 mask 255.255.255.0
+  neighbor 192.0.2.2 remote-as 64550
+  neighbor 192.0.2.2 description +++ Contoso partner BGP peer (demo) +++
+  neighbor 192.0.2.2 timers 5 15
+  neighbor 192.0.2.2 activate
+  neighbor 192.0.2.2 send-community both
+  neighbor 192.0.2.2 soft-reconfiguration inbound
+  neighbor 192.0.2.2 route-map RM-CONTOSO-IN in
+  neighbor 192.0.2.2 route-map RM-CONTOSO-OUT out
+ exit-address-family
+ !
+ address-family ipv4 vrf PARTNER-VPN-FABRIKAM
+  network 192.0.2.0 mask 255.255.255.0
+  neighbor 192.0.2.2 remote-as 64551
+  neighbor 192.0.2.2 description +++ Fabrikam partner BGP peer (demo) +++
+  neighbor 192.0.2.2 timers 5 15
+  neighbor 192.0.2.2 activate
+  neighbor 192.0.2.2 send-community both
+  neighbor 192.0.2.2 soft-reconfiguration inbound
+  neighbor 192.0.2.2 route-map RM-FABRIKAM-IN in
+  neighbor 192.0.2.2 route-map RM-FABRIKAM-OUT out
+ exit-address-family
+!
+ip prefix-list PL-CONTOSO-OUT seq 5 permit 192.0.2.0/24
+ip prefix-list PL-FABRIKAM-OUT seq 5 permit 192.0.2.0/24
+!
+route-map RM-CONTOSO-IN permit 10
+ description +++ Accept routes from Contoso (demo) +++
+!
+route-map RM-CONTOSO-OUT permit 10
+ description +++ Advertise Primary-site routes to Contoso (demo) +++
+ match ip address prefix-list PL-CONTOSO-OUT
+ set community 65000:6300
+!
+route-map RM-FABRIKAM-IN permit 10
+ description +++ Accept routes from Fabrikam (demo) +++
+!
+route-map RM-FABRIKAM-OUT permit 10
+ description +++ Advertise Secondary-site routes to Fabrikam (demo) +++
+ match ip address prefix-list PL-FABRIKAM-OUT
+ set community 65000:6200
+!
+ip nat inside source list ACL-CONTOSO-NAT pool CONTOSO-NAT-POOL vrf PARTNER-VPN-CONTOSO overload
+ip nat inside source list ACL-FABRIKAM-NAT pool FABRIKAM-NAT-POOL vrf PARTNER-VPN-FABRIKAM overload
+!
+ip route vrf PARTNER-VPN-CONTOSO 0.0.0.0 0.0.0.0 192.0.2.2 track 100
+ip route vrf PARTNER-VPN-FABRIKAM 0.0.0.0 0.0.0.0 192.0.2.2 track 200
+!
+line con 0
+ logging synchronous
+line vty 0 4
+ transport input ssh
+!
+end

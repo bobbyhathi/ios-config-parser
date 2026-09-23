@@ -1,0 +1,86 @@
+! Global IKEv2 and IPSec Configurations
+! IKEv2 Keyring
+crypto ikev2 keyring CONTOSO-KEYRING
+ peer CONTOSO-PEER
+  address 198.51.100.2
+  pre-shared-key DEMO-PSK-CONTOSO-0001-CHANGE-ME
+ !
+!
+crypto ikev2 keyring FABRIKAM-KEYRING
+ peer FABRIKAM-PEER
+  address 198.51.100.6
+  pre-shared-key DEMO-PSK-FABRIKAM-0001-CHANGE-ME
+ !
+!
+
+! IKEv2 Policy
+crypto ikev2 policy 10
+ proposal CONTOSO-PROPOSAL
+!
+crypto ikev2 policy 20
+ proposal FABRIKAM-PROPOSAL
+!
+
+! IKEv2 Profile
+crypto ikev2 profile CONTOSO-VTI-PROFILE
+ match identity remote address 198.51.100.2 255.255.255.255
+ authentication remote pre-share
+ authentication local pre-share
+ keyring local CONTOSO-KEYRING
+!
+crypto ikev2 profile FABRIKAM-VTI-PROFILE
+ match identity remote address 198.51.100.6 255.255.255.255
+ authentication remote pre-share
+ authentication local pre-share
+ keyring local FABRIKAM-KEYRING
+!
+
+! IKEv2 Proposal
+crypto ikev2 proposal CONTOSO-PROPOSAL
+ encryption aes-cbc-256
+ integrity sha256
+ group 14
+!
+crypto ikev2 proposal FABRIKAM-PROPOSAL
+ encryption aes-cbc-256
+ integrity sha256
+ group 14
+!
+
+! IPSec Profile
+crypto ipsec profile CONTOSO-IPSEC-PROFILE
+ set transform-set CONTOSO-TS
+ set ikev2-profile CONTOSO-VTI-PROFILE
+!
+crypto ipsec profile FABRIKAM-IPSEC-PROFILE
+ set transform-set FABRIKAM-TS
+ set ikev2-profile FABRIKAM-VTI-PROFILE
+!
+
+! IPSec Transform Set
+crypto ipsec transform-set CONTOSO-TS esp-aes 256 esp-sha256-hmac
+ mode tunnel
+!
+crypto ipsec transform-set FABRIKAM-TS esp-aes 256 esp-sha256-hmac
+ mode tunnel
+!
+
+! IP SLA Configurations
+ip sla 100
+ icmp-echo 203.0.113.2 source-ip 203.0.113.1
+  frequency 5
+ip sla schedule 200 life forever start-time now
+ip sla 200
+ icmp-echo 203.0.113.6 source-ip 203.0.113.5
+  frequency 5
+
+! Tracking Configurations
+track 100 ip sla 100 reachability
+!
+track 200 ip sla 200 reachability
+!
+
+! Access Control Lists
+ip access-list standard ACL-MGMT-ALLOWED
+ 10 permit 192.0.2.0 0.0.0.255
+!

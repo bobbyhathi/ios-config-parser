@@ -1,0 +1,107 @@
+! Extracted from sample-edge-router-config.txt
+! Last config change: 2026-01-01 09-00-00
+!
+! VRF Definition
+vrf definition PARTNER-VPN-FABRIKAM
+  rd 65000:200
+  !
+  address-family ipv4
+  exit-address-family
+  !
+
+! Interfaces
+interface GigabitEthernet0/1.200
+  description +++ PARTNER-VPN-FABRIKAM LAN +++
+  encapsulation dot1Q 200
+  vrf forwarding PARTNER-VPN-FABRIKAM
+  ip address 192.0.2.1 255.255.255.0
+  ip nat inside
+  !
+  interface Tunnel200
+    description *** IPSec VTI to Fabrikam (demo) ***
+    vrf forwarding PARTNER-VPN-FABRIKAM
+    ip unnumbered Loopback0
+    ip nat outside
+    ip tcp adjust-mss 1380
+    tunnel source GigabitEthernet0/0
+    tunnel mode ipsec ipv4
+    tunnel destination 198.51.100.6
+    tunnel protection ipsec profile FABRIKAM-IPSEC-PROFILE
+    !
+
+! NAT inside dynamic Statement
+ip nat inside source list ACL-FABRIKAM-NAT pool FABRIKAM-NAT-POOL vrf PARTNER-VPN-FABRIKAM overload
+
+! NAT Pool Configuration
+ip nat pool FABRIKAM-NAT-POOL 198.51.100.20 198.51.100.20 netmask 255.255.255.252
+!
+
+! Extended Access Control Lists
+ip access-list extended ACL-FABRIKAM-NAT
+  10 permit ip 192.0.2.0 0.0.0.255 any
+  !
+
+! Tracking Configurations
+track 200 ip sla 200 reachability
+  !
+
+! BGP Config
+router bgp 65000
+  address-family ipv4 vrf PARTNER-VPN-FABRIKAM
+    network 192.0.2.0 mask 255.255.255.0
+    neighbor 192.0.2.2 remote-as 64551
+    neighbor 192.0.2.2 description +++ Fabrikam partner BGP peer (demo) +++
+    neighbor 192.0.2.2 timers 5 15
+    neighbor 192.0.2.2 activate
+    neighbor 192.0.2.2 send-community both
+    neighbor 192.0.2.2 soft-reconfiguration inbound
+    neighbor 192.0.2.2 route-map RM-FABRIKAM-IN in
+    neighbor 192.0.2.2 route-map RM-FABRIKAM-OUT out
+  exit-address-family
+
+! Static Routes
+ip route vrf PARTNER-VPN-FABRIKAM 0.0.0.0 0.0.0.0 192.0.2.2 track 200
+
+! Route Maps
+route-map RM-FABRIKAM-IN permit 10
+  description +++ Accept routes from Fabrikam (demo) +++
+  !
+  route-map RM-FABRIKAM-OUT permit 10
+    description +++ Advertise Secondary-site routes to Fabrikam (demo) +++
+    match ip address prefix-list PL-FABRIKAM-OUT
+    set community 65000:6200
+    !
+
+! Prefix Lists
+ip prefix-list PL-FABRIKAM-OUT seq 5 permit 192.0.2.0/24
+!
+
+! Crypto Configurations
+! IKEv2 Keyrings
+crypto ikev2 keyring FABRIKAM-KEYRING
+  peer FABRIKAM-PEER
+  address 198.51.100.6
+  pre-shared-key DEMO-PSK-FABRIKAM-0001-CHANGE-ME
+  !
+  !
+
+! IKEv2 Profiles
+crypto ikev2 profile FABRIKAM-VTI-PROFILE
+  match identity remote address 198.51.100.6 255.255.255.255
+  authentication remote pre-share
+  authentication local pre-share
+  keyring local FABRIKAM-KEYRING
+  !
+
+! IPSec Transform Sets
+crypto ipsec transform-set FABRIKAM-TS esp-aes 256 esp-sha256-hmac
+  mode tunnel
+  !
+
+! IPSec Profiles
+crypto ipsec profile FABRIKAM-IPSEC-PROFILE
+  set transform-set FABRIKAM-TS
+  set ikev2-profile FABRIKAM-VTI-PROFILE
+  !
+
+!

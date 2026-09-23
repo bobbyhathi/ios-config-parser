@@ -1,0 +1,16 @@
+! Extracted from sample-edge-router-config.txt
+! Last config change: 2026-01-01 09-00-00
+!
+! VRF Definition
+vrf definition Mgmt-intf
+  !
+  address-family ipv4
+  exit-address-family
+  !
+  address-family ipv6
+  exit-address-family
+  !
+
+! Interfaces
+
+!

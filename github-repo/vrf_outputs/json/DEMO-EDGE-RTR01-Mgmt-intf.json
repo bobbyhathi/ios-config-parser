@@ -1,0 +1,39 @@
+{
+  "definition": [
+    "vrf definition Mgmt-intf\n",
+    " !\n",
+    " address-family ipv4\n",
+    " exit-address-family\n",
+    " !\n",
+    " address-family ipv6\n",
+    " exit-address-family\n",
+    "!\n"
+  ],
+  "interfaces": [],
+  "nat": [],
+  "nat_outside": [],
+  "nat_inside_dynamic": [],
+  "nat_inside_dynamic2": [],
+  "nat_pool": [],
+  "acl_extended": [],
+  "static_routes": [],
+  "bgp": [],
+  "route_maps": {},
+  "prefix_lists": {},
+  "acls": {},
+  "ext_acls": {},
+  "ip_sla": [],
+  "tracking": [],
+  "ikev2": {
+    "keyring": [],
+    "policy": [],
+    "profile": [],
+    "proposal": []
+  },
+  "ipsec": {
+    "profile": [],
+    "transform_set": []
+  },
+  "asn": "65000",
+  "site_role": "Unknown"
+}

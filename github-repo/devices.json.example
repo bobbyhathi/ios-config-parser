@@ -1,0 +1,32 @@
+{
+  "_comment": "Copy this file to devices.json and fill in real values. devices.json is gitignored -- never commit real credentials.",
+
+  "jumphosts": {
+    "jump-example": {
+      "host": "10.0.0.1",
+      "port": 22,
+      "username": "svc-jumphost",
+      "password": "REPLACE_ME",
+      "key_file": "~/.ssh/id_rsa_jumphost"
+    }
+  },
+
+  "devices": {
+    "edge-router-01": {
+      "host": "10.0.1.1",
+      "port": 22,
+      "device_type": "cisco_ios",
+      "username": "svc-netauto",
+      "password": "REPLACE_ME",
+      "secret": "REPLACE_ME_ENABLE_SECRET",
+      "jumphost": "jump-example"
+    },
+    "edge-router-02-direct": {
+      "host": "10.0.1.2",
+      "port": 22,
+      "device_type": "cisco_ios",
+      "username": "svc-netauto",
+      "key_file": "~/.ssh/id_rsa_netauto"
+    }
+  }
+}

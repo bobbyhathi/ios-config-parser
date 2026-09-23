@@ -1,0 +1,10 @@
+{
+  "enabled_tabs": [
+    "vpn_status",
+    "bgp_status",
+    "vrf_summary"
+  ],
+  "input_source": "file",
+  "config_file": "devices.json",
+  "input_file": "/Users/bobbyh/ios/router_config_parser/github-repo/sample_configs/sample-edge-router-config.txt"
+}

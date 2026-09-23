@@ -1,0 +1,15 @@
+# Real device/jumphost credentials -- never commit
+devices.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS cruft
+.DS_Store
+
+# Local settings override (settings.json ships with sane defaults and is tracked;
+# uncomment if you'd rather each clone start from devices.json.example-style setup)
+# settings.json

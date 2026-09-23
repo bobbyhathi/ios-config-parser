@@ -1,0 +1,142 @@
+{
+  "definition": [
+    "vrf definition PARTNER-VPN-CONTOSO\n",
+    " rd 65000:100\n",
+    " !\n",
+    " address-family ipv4\n",
+    " exit-address-family\n",
+    "!\n"
+  ],
+  "interfaces": [
+    [
+      "interface GigabitEthernet0/1.100\n",
+      " description +++ PARTNER-VPN-CONTOSO LAN +++\n",
+      " encapsulation dot1Q 100\n",
+      " vrf forwarding PARTNER-VPN-CONTOSO\n",
+      " ip address 192.0.2.1 255.255.255.0\n",
+      " ip nat inside\n",
+      "!\n"
+    ],
+    [
+      "interface Tunnel100\n",
+      " description *** IPSec VTI to Contoso (demo) ***\n",
+      " vrf forwarding PARTNER-VPN-CONTOSO\n",
+      " ip unnumbered Loopback0\n",
+      " ip nat outside\n",
+      " ip tcp adjust-mss 1380\n",
+      " tunnel source GigabitEthernet0/0\n",
+      " tunnel mode ipsec ipv4\n",
+      " tunnel destination 198.51.100.2\n",
+      " tunnel protection ipsec profile CONTOSO-IPSEC-PROFILE\n",
+      "!\n"
+    ]
+  ],
+  "nat": [],
+  "nat_outside": [],
+  "nat_inside_dynamic": [
+    "ip nat inside source list ACL-CONTOSO-NAT pool CONTOSO-NAT-POOL vrf PARTNER-VPN-CONTOSO overload\n"
+  ],
+  "nat_inside_dynamic2": [],
+  "nat_pool": [
+    "ip nat pool CONTOSO-NAT-POOL 198.51.100.10 198.51.100.10 netmask 255.255.255.252\n"
+  ],
+  "acl_extended": [],
+  "static_routes": [
+    "ip route vrf PARTNER-VPN-CONTOSO 0.0.0.0 0.0.0.0 192.0.2.2 track 100\n"
+  ],
+  "bgp": [
+    "router bgp 65000\n",
+    " address-family ipv4 vrf PARTNER-VPN-CONTOSO\n",
+    "  network 192.0.2.0 mask 255.255.255.0\n",
+    "  neighbor 192.0.2.2 remote-as 64550\n",
+    "  neighbor 192.0.2.2 description +++ Contoso partner BGP peer (demo) +++\n",
+    "  neighbor 192.0.2.2 timers 5 15\n",
+    "  neighbor 192.0.2.2 activate\n",
+    "  neighbor 192.0.2.2 send-community both\n",
+    "  neighbor 192.0.2.2 soft-reconfiguration inbound\n",
+    "  neighbor 192.0.2.2 route-map RM-CONTOSO-IN in\n",
+    "  neighbor 192.0.2.2 route-map RM-CONTOSO-OUT out\n",
+    " exit-address-family\n",
+    " !\n"
+  ],
+  "route_maps": {
+    "RM-CONTOSO-OUT": [
+      "route-map RM-CONTOSO-OUT permit 10\n",
+      " description +++ Advertise Primary-site routes to Contoso (demo) +++\n",
+      " match ip address prefix-list PL-CONTOSO-OUT\n",
+      " set community 65000:6300\n",
+      "!\n"
+    ],
+    "RM-CONTOSO-IN": [
+      "route-map RM-CONTOSO-IN permit 10\n",
+      " description +++ Accept routes from Contoso (demo) +++\n",
+      "!\n"
+    ]
+  },
+  "prefix_lists": {
+    "PL-CONTOSO-OUT": [
+      "ip prefix-list PL-CONTOSO-OUT seq 5 permit 192.0.2.0/24\n"
+    ]
+  },
+  "acls": {},
+  "ext_acls": {
+    "ACL-CONTOSO-NAT": [
+      "ip access-list extended ACL-CONTOSO-NAT\n",
+      " 10 permit ip 192.0.2.0 0.0.0.255 any\n",
+      "!\n"
+    ]
+  },
+  "ip_sla": [],
+  "tracking": [
+    [
+      "track 100 ip sla 100 reachability\n",
+      "!\n"
+    ]
+  ],
+  "ikev2": {
+    "keyring": [
+      [
+        "crypto ikev2 keyring CONTOSO-KEYRING\n",
+        " peer CONTOSO-PEER\n",
+        "  address 198.51.100.2\n",
+        "  pre-shared-key DEMO-PSK-CONTOSO-0001-CHANGE-ME\n",
+        " !\n",
+        "!\n"
+      ]
+    ],
+    "policy": [],
+    "profile": [
+      [
+        "crypto ikev2 profile CONTOSO-VTI-PROFILE\n",
+        " match identity remote address 198.51.100.2 255.255.255.255\n",
+        " authentication remote pre-share\n",
+        " authentication local pre-share\n",
+        " keyring local CONTOSO-KEYRING\n",
+        "!\n"
+      ]
+    ],
+    "proposal": []
+  },
+  "ipsec": {
+    "profile": [
+      [
+        "crypto ipsec profile CONTOSO-IPSEC-PROFILE\n",
+        " set transform-set CONTOSO-TS\n",
+        " set ikev2-profile CONTOSO-VTI-PROFILE\n",
+        "!\n"
+      ]
+    ],
+    "transform_set": [
+      [
+        "crypto ipsec transform-set CONTOSO-TS esp-aes 256 esp-sha256-hmac\n",
+        " mode tunnel\n",
+        "!\n"
+      ]
+    ]
+  },
+  "asn": "65000",
+  "referenced_tracks": [
+    "100"
+  ],
+  "site_role": "Primary"
+}

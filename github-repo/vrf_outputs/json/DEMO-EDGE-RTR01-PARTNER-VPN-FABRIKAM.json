@@ -1,0 +1,143 @@
+{
+  "definition": [
+    "vrf definition PARTNER-VPN-FABRIKAM\n",
+    " rd 65000:200\n",
+    " !\n",
+    " address-family ipv4\n",
+    " exit-address-family\n",
+    "!\n"
+  ],
+  "interfaces": [
+    [
+      "interface GigabitEthernet0/1.200\n",
+      " description +++ PARTNER-VPN-FABRIKAM LAN +++\n",
+      " encapsulation dot1Q 200\n",
+      " vrf forwarding PARTNER-VPN-FABRIKAM\n",
+      " ip address 192.0.2.1 255.255.255.0\n",
+      " ip nat inside\n",
+      "!\n"
+    ],
+    [
+      "interface Tunnel200\n",
+      " description *** IPSec VTI to Fabrikam (demo) ***\n",
+      " vrf forwarding PARTNER-VPN-FABRIKAM\n",
+      " ip unnumbered Loopback0\n",
+      " ip nat outside\n",
+      " ip tcp adjust-mss 1380\n",
+      " tunnel source GigabitEthernet0/0\n",
+      " tunnel mode ipsec ipv4\n",
+      " tunnel destination 198.51.100.6\n",
+      " tunnel protection ipsec profile FABRIKAM-IPSEC-PROFILE\n",
+      "!\n"
+    ]
+  ],
+  "nat": [],
+  "nat_outside": [],
+  "nat_inside_dynamic": [
+    "ip nat inside source list ACL-FABRIKAM-NAT pool FABRIKAM-NAT-POOL vrf PARTNER-VPN-FABRIKAM overload\n"
+  ],
+  "nat_inside_dynamic2": [],
+  "nat_pool": [
+    "ip nat pool FABRIKAM-NAT-POOL 198.51.100.20 198.51.100.20 netmask 255.255.255.252\n",
+    "!\n"
+  ],
+  "acl_extended": [],
+  "static_routes": [
+    "ip route vrf PARTNER-VPN-FABRIKAM 0.0.0.0 0.0.0.0 192.0.2.2 track 200\n"
+  ],
+  "bgp": [
+    "router bgp 65000\n",
+    " address-family ipv4 vrf PARTNER-VPN-FABRIKAM\n",
+    "  network 192.0.2.0 mask 255.255.255.0\n",
+    "  neighbor 192.0.2.2 remote-as 64551\n",
+    "  neighbor 192.0.2.2 description +++ Fabrikam partner BGP peer (demo) +++\n",
+    "  neighbor 192.0.2.2 timers 5 15\n",
+    "  neighbor 192.0.2.2 activate\n",
+    "  neighbor 192.0.2.2 send-community both\n",
+    "  neighbor 192.0.2.2 soft-reconfiguration inbound\n",
+    "  neighbor 192.0.2.2 route-map RM-FABRIKAM-IN in\n",
+    "  neighbor 192.0.2.2 route-map RM-FABRIKAM-OUT out\n",
+    " exit-address-family\n"
+  ],
+  "route_maps": {
+    "RM-FABRIKAM-IN": [
+      "route-map RM-FABRIKAM-IN permit 10\n",
+      " description +++ Accept routes from Fabrikam (demo) +++\n",
+      "!\n"
+    ],
+    "RM-FABRIKAM-OUT": [
+      "route-map RM-FABRIKAM-OUT permit 10\n",
+      " description +++ Advertise Secondary-site routes to Fabrikam (demo) +++\n",
+      " match ip address prefix-list PL-FABRIKAM-OUT\n",
+      " set community 65000:6200\n",
+      "!\n"
+    ]
+  },
+  "prefix_lists": {
+    "PL-FABRIKAM-OUT": [
+      "ip prefix-list PL-FABRIKAM-OUT seq 5 permit 192.0.2.0/24\n",
+      "!\n"
+    ]
+  },
+  "acls": {},
+  "ext_acls": {
+    "ACL-FABRIKAM-NAT": [
+      "ip access-list extended ACL-FABRIKAM-NAT\n",
+      " 10 permit ip 192.0.2.0 0.0.0.255 any\n",
+      "!\n"
+    ]
+  },
+  "ip_sla": [],
+  "tracking": [
+    [
+      "track 200 ip sla 200 reachability\n",
+      "!\n"
+    ]
+  ],
+  "ikev2": {
+    "keyring": [
+      [
+        "crypto ikev2 keyring FABRIKAM-KEYRING\n",
+        " peer FABRIKAM-PEER\n",
+        "  address 198.51.100.6\n",
+        "  pre-shared-key DEMO-PSK-FABRIKAM-0001-CHANGE-ME\n",
+        " !\n",
+        "!\n"
+      ]
+    ],
+    "policy": [],
+    "profile": [
+      [
+        "crypto ikev2 profile FABRIKAM-VTI-PROFILE\n",
+        " match identity remote address 198.51.100.6 255.255.255.255\n",
+        " authentication remote pre-share\n",
+        " authentication local pre-share\n",
+        " keyring local FABRIKAM-KEYRING\n",
+        "!\n"
+      ]
+    ],
+    "proposal": []
+  },
+  "ipsec": {
+    "profile": [
+      [
+        "crypto ipsec profile FABRIKAM-IPSEC-PROFILE\n",
+        " set transform-set FABRIKAM-TS\n",
+        " set ikev2-profile FABRIKAM-VTI-PROFILE\n",
+        "!\n"
+      ]
+    ],
+    "transform_set": [
+      [
+        "crypto ipsec transform-set FABRIKAM-TS esp-aes 256 esp-sha256-hmac\n",
+        " mode tunnel\n",
+        "!\n"
+      ]
+    ]
+  },
+  "asn": "65000",
+  "referenced_tracks": [
+    "200"
+  ],
+  "site_role": "Secondary"
+}

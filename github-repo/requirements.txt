@@ -1,0 +1,6 @@
+netmiko>=4.3.0
+paramiko>=3.4.0
+
+# tkinter ships with the Python standard library on Windows/Linux.
+# On macOS with Homebrew Python, install the Tk bindings separately:
+# brew install python-tk@3.11   (match your python3 minor version)

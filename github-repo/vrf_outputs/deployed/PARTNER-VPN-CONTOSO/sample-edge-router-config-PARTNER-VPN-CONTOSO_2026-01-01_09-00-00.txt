@@ -1,0 +1,106 @@
+! Extracted from live device
+! Last config change: 2026-01-01 09-00-00
+!
+! VRF Definition
+vrf definition PARTNER-VPN-CONTOSO
+  rd 65000:100
+  !
+  address-family ipv4
+  exit-address-family
+  !
+
+! Interfaces
+interface GigabitEthernet0/1.100
+  description +++ PARTNER-VPN-CONTOSO LAN +++
+  encapsulation dot1Q 100
+  vrf forwarding PARTNER-VPN-CONTOSO
+  ip address 192.0.2.1 255.255.255.0
+  ip nat inside
+  !
+  interface Tunnel100
+    description *** IPSec VTI to Contoso (demo) ***
+    vrf forwarding PARTNER-VPN-CONTOSO
+    ip unnumbered Loopback0
+    ip nat outside
+    ip tcp adjust-mss 1380
+    tunnel source GigabitEthernet0/0
+    tunnel mode ipsec ipv4
+    tunnel destination 198.51.100.2
+    tunnel protection ipsec profile CONTOSO-IPSEC-PROFILE
+    !
+
+! NAT inside dynamic Statement
+ip nat inside source list ACL-CONTOSO-NAT pool CONTOSO-NAT-POOL vrf PARTNER-VPN-CONTOSO overload
+
+! NAT Pool Configuration
+ip nat pool CONTOSO-NAT-POOL 198.51.100.10 198.51.100.10 netmask 255.255.255.252
+
+! Extended Access Control Lists
+ip access-list extended ACL-CONTOSO-NAT
+  10 permit ip 192.0.2.0 0.0.0.255 any
+  !
+
+! Tracking Configurations
+track 100 ip sla 100 reachability
+  !
+
+! BGP Config
+router bgp 65000
+  address-family ipv4 vrf PARTNER-VPN-CONTOSO
+    network 192.0.2.0 mask 255.255.255.0
+    neighbor 192.0.2.2 remote-as 64550
+    neighbor 192.0.2.2 description +++ Contoso partner BGP peer (demo) +++
+    neighbor 192.0.2.2 timers 5 15
+    neighbor 192.0.2.2 activate
+    neighbor 192.0.2.2 send-community both
+    neighbor 192.0.2.2 soft-reconfiguration inbound
+    neighbor 192.0.2.2 route-map RM-CONTOSO-IN in
+    neighbor 192.0.2.2 route-map RM-CONTOSO-OUT out
+  exit-address-family
+  !
+
+! Static Routes
+ip route vrf PARTNER-VPN-CONTOSO 0.0.0.0 0.0.0.0 192.0.2.2 track 100
+
+! Route Maps
+route-map RM-CONTOSO-OUT permit 10
+  description +++ Advertise Primary-site routes to Contoso (demo) +++
+  match ip address prefix-list PL-CONTOSO-OUT
+  set community 65000:6300
+  !
+  route-map RM-CONTOSO-IN permit 10
+    description +++ Accept routes from Contoso (demo) +++
+    !
+
+! Prefix Lists
+ip prefix-list PL-CONTOSO-OUT seq 5 permit 192.0.2.0/24
+
+! Crypto Configurations
+! IKEv2 Keyrings
+crypto ikev2 keyring CONTOSO-KEYRING
+  peer CONTOSO-PEER
+  address 198.51.100.2
+  pre-shared-key DEMO-PSK-CONTOSO-0001-CHANGE-ME
+  !
+  !
+
+! IKEv2 Profiles
+crypto ikev2 profile CONTOSO-VTI-PROFILE
+  match identity remote address 198.51.100.2 255.255.255.255
+  authentication remote pre-share
+  authentication local pre-share
+  keyring local CONTOSO-KEYRING
+  !
+
+! IPSec Transform Sets
+crypto ipsec transform-set CONTOSO-TS esp-aes 256 esp-sha256-hmac
+  mode tunnel
+  !
+
+! IPSec Profiles
+crypto ipsec profile CONTOSO-IPSEC-PROFILE
+  set transform-set CONTOSO-TS
+  set ikev2-profile CONTOSO-VTI-PROFILE
+  !
+
+!
