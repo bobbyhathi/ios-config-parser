@@ -5,7 +5,7 @@
 Command Executor Tab Add-on for Router Configuration Parser
 Integrates with existing JumphostConnector and creates a tab interface
 
-@author: bobbyh (Enhanced Tab Version)
+@author: Bobby Hathiramani
 """
 
 import tkinter as tk
